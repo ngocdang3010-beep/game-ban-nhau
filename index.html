@@ -1,83 +1,64 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-  <meta charset="UTF-8" />
-  <title>Game bàn nhậu</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      padding: 80px 20px;
-      margin: 0;
-      min-height: 100vh;
 
-      /* HÌNH NỀN */
-      background-image: url("background.jpg");
-      background-size: cover;
-      background-position: center;
-      background-repeat: no-repeat;
+<script>
+    const STORAGE_KEY = "ban_nhau_user_seed";
+    const RESULT_KEY = "ban_nhau_today_result";
 
-      display: flex;
-      justify-content: center;
-      align-items: center;
+    // Hàm tạo một số ID "ổn định" cho người dùng dựa trên nhiều yếu tố
+    function getStableUserId() {
+        // Thử lấy từ localStorage trước (nếu đã tạo)
+        let storedSeed = localStorage.getItem(STORAGE_KEY);
+        if (storedSeed) {
+            return storedSeed;
+        }
+        // Nếu chưa có, tạo một seed mới và lưu (sẽ dùng mãi mãi cho trình duyệt này)
+        // Kết hợp thời gian, một số ngẫu nhiên và các thông tin trình duyệt có sẵn
+        const newSeed = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem(STORAGE_KEY, newSeed);
+        return newSeed;
     }
 
-    /* Khung mờ */
-    .box {
-      background: rgba(255, 255, 255, 0.85);
-      max-width: 600px;
-      padding: 30px;
-      border-radius: 16px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+    // Hàm tạo kết quả cho ngày hôm nay
+    function getTodaysResult(userId) {
+        const today = new Date().toDateString(); // Chuỗi định dạng ngày, ví dụ "Mon Jan 02 2023"
+
+        // Lấy kết quả đã lưu cho ngày hôm nay
+        let dailyResults = JSON.parse(localStorage.getItem(RESULT_KEY) || '{}');
+
+        // Nếu chưa có kết quả cho ngày hôm nay, hoặc kết quả không có userId này, thì tạo mới
+        if (!dailyResults[today] || !dailyResults[today][userId]) {
+            // Tạo một số ngẫu nhiên dựa trên userId và ngày hôm nay
+            // Điều này đảm bảo cùng userId + cùng ngày = cùng một số
+            const seed = today + userId;
+            let hash = 0;
+            for (let i = 0; i < seed.length; i++) {
+                hash = ((hash << 5) - hash) + seed.charCodeAt(i);
+                hash = hash & hash;
+            }
+            const randomValue = Math.abs(hash) % 10; // Số từ 0-9
+
+            // Tỷ lệ: 8 trúng, 2 trật (số 8 và 9 là "trật")
+            const result = (randomValue >= 8) ?
+                "😆 CHÚC MAY MẮN LẦN SAU" :
+                [
+                    "🍺 CHÚC MỪNG BẠN TRÚNG THƯỞNG 1 PHIẾU CHĂM SÓC DA CƠ BẢN TẠI KKB – UỐNG 1/2 LY",
+                    "🍻 CHÚC MỪNG BẠN TRÚNG THƯỞNG 1 PHIẾU CHĂM SÓC DA CƠ BẢN TẠI KKB – UỐNG 1 LY",
+                    "🍺🍺 CHÚC MỪNG BẠN TRÚNG THƯỞNG 1 PHIẾU CHĂM SÓC DA CƠ BẢN TẠI KKB – UỐNG 2 LY"
+                ][randomValue % 3]; // Lấy 1 trong 3 kết quả trúng thưởng
+
+            // Lưu kết quả này cho userId trong ngày hôm nay
+            if (!dailyResults[today]) {
+                dailyResults[today] = {};
+            }
+            dailyResults[today][userId] = result;
+            localStorage.setItem(RESULT_KEY, JSON.stringify(dailyResults));
+        }
+
+        // Trả về kết quả đã lưu (hoặc vừa tạo) cho userId trong ngày hôm nay
+        return dailyResults[today][userId];
     }
 
-    .result {
-      font-size: 26px;
-      font-weight: bold;
-      line-height: 1.5;
-    }
-  </style>
-</head>
-
-<body>
-  <div class="box">
-    <div class="result" id="kq"></div>
-  </div>
-
-  <script>
-    const STORAGE_KEY = "ban_nhau_game_turns";
-
-    // Nếu chưa có dữ liệu thì tạo 10 lượt (8 trúng – 2 xịt)
-    if (!localStorage.getItem(STORAGE_KEY)) {
-      const turns = [
-        "🍺 CHÚC MỪNG BẠN TRÚNG THƯỞNG 1 PHIẾU CHĂM SÓC DA CƠ BẢN TẠI KKB – UỐNG 1/2 LY",
-        "🍻 CHÚC MỪNG BẠN TRÚNG THƯỞNG 1 PHIẾU CHĂM SÓC DA CƠ BẢN TẠI KKB – UỐNG 1 LY",
-        "🍺🍺 CHÚC MỪNG BẠN TRÚNG THƯỞNG 1 PHIẾU CHĂM SÓC DA CƠ BẢN TẠI KKB – UỐNG 2 LY",
-        "🍺 CHÚC MỪNG BẠN TRÚNG THƯỞNG 1 PHIẾU CHĂM SÓC DA CƠ BẢN TẠI KKB – UỐNG 1/2 LY",
-        "🍻 CHÚC MỪNG BẠN TRÚNG THƯỞNG 1 PHIẾU CHĂM SÓC DA CƠ BẢN TẠI KKB – UỐNG 1 LY",
-        "🍺🍺 CHÚC MỪNG BẠN TRÚNG THƯỞNG 1 PHIẾU CHĂM SÓC DA CƠ BẢN TẠI KKB – UỐNG 2 LY",
-        "🍻 CHÚC MỪNG BẠN TRÚNG THƯỞNG 1 PHIẾU CHĂM SÓC DA CƠ BẢN TẠI KKB – UỐNG 1 LY",
-        "🍺 CHÚC MỪNG BẠN TRÚNG THƯỞNG 1 PHIẾU CHĂM SÓC DA CƠ BẢN TẠI KKB – UỐNG 1/2 LY",
-        "😆 CHÚC MAY MẮN LẦN SAU",
-        "😆 CHÚC MAY MẮN LẦN SAU"
-      ];
-
-      // Trộn kết quả
-      turns.sort(() => Math.random() - 0.5);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(turns));
-    }
-
-    const turnsLeft = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    let resultText = "";
-
-    if (turnsLeft.length === 0) {
-      resultText = "⛔ BẠN ĐÃ HẾT 10 LƯỢT CHƠI";
-    } else {
-      resultText = turnsLeft.shift();
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(turnsLeft));
-    }
-
+    // Chạy chương trình
+    const userId = getStableUserId();
+    const resultText = getTodaysResult(userId);
     document.getElementById("kq").innerHTML = resultText;
-  </script>
-</body>
-</html>
+</script>
