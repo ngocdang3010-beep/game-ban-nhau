@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <title>Game bàn nhậu</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 80px 20px;
+      margin: 0;
+      min-height: 100vh;
+
+      /* HÌNH NỀN */
+      background-image: url("background.jpg");
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    /* Khung mờ */
+    .box {
+      background: rgba(255, 255, 255, 0.85);
+      max-width: 600px;
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+    }
+
+    .result {
+      font-size: 26px;
+      font-weight: bold;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="box">
+    <div class="result" id="kq"></div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = "ban_nhau_game_turns";
+
+    // Nếu chưa có dữ liệu thì tạo 10 lượt (8 trúng – 2 xịt)
+    if (!localStorage.getItem(STORAGE_KEY)) {
+      const turns = [
+        "🍺 CHÚC MỪNG BẠN TRÚNG THƯỞNG 1 PHIẾU CHĂM SÓC DA CƠ BẢN TẠI KKB – UỐNG 1/2 LY",
+        "🍻 CHÚC MỪNG BẠN TRÚNG THƯỞNG 1 PHIẾU CHĂM SÓC DA CƠ BẢN TẠI KKB – UỐNG 1 LY",
+        "🍺🍺 CHÚC MỪNG BẠN TRÚNG THƯỞNG 1 PHIẾU CHĂM SÓC DA CƠ BẢN TẠI KKB – UỐNG 2 LY",
+        "🍺 CHÚC MỪNG BẠN TRÚNG THƯỞNG 1 PHIẾU CHĂM SÓC DA CƠ BẢN TẠI KKB – UỐNG 1/2 LY",
+        "🍻 CHÚC MỪNG BẠN TRÚNG THƯỞNG 1 PHIẾU CHĂM SÓC DA CƠ BẢN TẠI KKB – UỐNG 1 LY",
+        "🍺🍺 CHÚC MỪNG BẠN TRÚNG THƯỞNG 1 PHIẾU CHĂM SÓC DA CƠ BẢN TẠI KKB – UỐNG 2 LY",
+        "🍻 CHÚC MỪNG BẠN TRÚNG THƯỞNG 1 PHIẾU CHĂM SÓC DA CƠ BẢN TẠI KKB – UỐNG 1 LY",
+        "🍺 CHÚC MỪNG BẠN TRÚNG THƯỞNG 1 PHIẾU CHĂM SÓC DA CƠ BẢN TẠI KKB – UỐNG 1/2 LY",
+        "😆 CHÚC MAY MẮN LẦN SAU",
+        "😆 CHÚC MAY MẮN LẦN SAU"
+      ];
+
+      // Trộn kết quả
+      turns.sort(() => Math.random() - 0.5);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(turns));
+    }
+
+    const turnsLeft = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    let resultText = "";
+
+    if (turnsLeft.length === 0) {
+      resultText = "⛔ BẠN ĐÃ HẾT 10 LƯỢT CHƠI";
+    } else {
+      resultText = turnsLeft.shift();
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(turnsLeft));
+    }
+
+    document.getElementById("kq").innerHTML = resultText;
+  </script>
+
+</body>
+</html>
