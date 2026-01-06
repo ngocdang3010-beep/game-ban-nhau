@@ -1,8 +1,12 @@
+html
 <!DOCTYPE html>
 <html lang="vi">
 <head>
   <meta charset="UTF-8" />
   <title>Game bàn nhậu</title>
+  <!-- Cache Manifest (hỗ trợ offline cơ bản) -->
+  <link rel="manifest" href="manifest.json">
+  
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -11,8 +15,8 @@
       margin: 0;
       min-height: 100vh;
 
-      /* HÌNH NỀN */
-      background-image: url("background.jpg");
+      /* HÌNH NỀN - Dùng đường dẫn tuyệt đối để đảm bảo */
+      background-image: url("https://raw.githubusercontent.com/ngocdang3010-beep/game-ban-nhau/main/b1e0e161-ed4c-4572-a5e1-1a5e6904e46a.jpg");
       background-size: cover;
       background-position: center;
       background-repeat: no-repeat;
@@ -39,15 +43,46 @@
       text-align: center;
       word-break: break-word;
     }
+    
+    /* Thông báo offline */
+    #offlineAlert {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      background: rgba(0,0,0,0.7);
+      color: white;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 14px;
+      display: none;
+    }
   </style>
 </head>
 
 <body>
+  <!-- Thông báo trạng thái mạng -->
+  <div id="offlineAlert">📴 Chế độ Offline</div>
+  
   <div class="box">
     <div class="result" id="kq"></div>
   </div>
 
   <script>
+    // ===== PHẦN 1: KIỂM TRA TRẠNG THÁI MẠNG =====
+    window.addEventListener('online', () => {
+      document.getElementById('offlineAlert').style.display = 'none';
+    });
+    
+    window.addEventListener('offline', () => {
+      document.getElementById('offlineAlert').style.display = 'block';
+    });
+    
+    // Kiểm tra ngay khi tải trang
+    if (!navigator.onLine) {
+      document.getElementById('offlineAlert').style.display = 'block';
+    }
+
+    // ===== PHẦN 2: GAME LOGIC (HOẠT ĐỘNG OFFLINE) =====
     const STORAGE_KEY = "ban_nhau_game_turns";
 
     // Tạo 10 lượt: 6 trúng thưởng, 4 không trúng
@@ -60,11 +95,11 @@
         "😆 CHÚC MAY MẮN LẦN SAU",
         
         // 6 lượt trúng thưởng
-        "🍺 CHÚC MỪNG BẠN TRÚNG THƯỞNG 1 PHIẾU CHĂM SÓC DA CƠ BẢN TẠI KKB – UỐNG 1/2 LY",  // 1 lượt
-        "🍻 CHÚC MỪNG BẠN TRÚNG THƯỞNG 1 PHIẾU CHĂM SÓC DA CƠ BẢN TẠI KKB – UỐNG 1/2 LY",
+        "🍺 CHÚC MỪNG BẠN TRÚNG THƯỞNG 1 PHIẾU CHĂM SÓC DA CƠ BẢN TẠI KKB – UỐNG 1/2 LY",
         "🍻 CHÚC MỪNG BẠN TRÚNG THƯỞNG 1 PHIẾU CHĂM SÓC DA CƠ BẢN TẠI KKB – UỐNG 1 LY",
         "🍻 CHÚC MỪNG BẠN TRÚNG THƯỞNG 1 PHIẾU CHĂM SÓC DA CƠ BẢN TẠI KKB – UỐNG 1 LY",
-        "🍺🍺 CHÚC MỪNG BẠN TRÚNG THƯỞNG 1 PHIẾU CHĂM SÓC DA CƠ BẢN TẠI KKB – UỐNG 2 LY",  // 1 lượt
+        "🍻 CHÚC MỪNG BẠN TRÚNG THƯỞNG 1 PHIẾU CHĂM SÓC DA CƠ BẢN TẠI KKB – UỐNG 1 LY",
+        "🍺🍺 CHÚC MỪNG BẠN TRÚNG THƯỞNG 1 PHIẾU CHĂM SÓC DA CƠ BẢN TẠI KKB – UỐNG 2 LY",
         "🍻 CHÚC MỪNG BẠN TRÚNG THƯỞNG 1 PHIẾU CHĂM SÓC DA CƠ BẢN TẠI KKB – UỐNG 2 LY"
       ];
 
@@ -84,6 +119,65 @@
     }
 
     document.getElementById("kq").innerHTML = resultText;
+
+    // ===== PHẦN 3: SERVICE WORKER (CACHE OFFLINE) =====
+    if ('serviceWorker' in navigator) {
+      // Service Worker code được embed trực tiếp
+      const swCode = `
+        const CACHE_NAME = 'game-ban-nhau-v2';
+        const urlsToCache = [
+          '.',
+          'index.html',
+          'https://raw.githubusercontent.com/ngocdang3010-beep/game-ban-nhau/main/b1e0e161-ed4c-4572-a5e1-1a5e6904e46a.jpg'
+        ];
+
+        self.addEventListener('install', event => {
+          event.waitUntil(
+            caches.open(CACHE_NAME)
+              .then(cache => cache.addAll(urlsToCache))
+          );
+        });
+
+        self.addEventListener('fetch', event => {
+          event.respondWith(
+            caches.match(event.request)
+              .then(response => {
+                // Trả về bản cache nếu có, nếu không thì fetch từ mạng
+                return response || fetch(event.request);
+              })
+          );
+        });
+      `;
+
+      // Tạo và đăng ký Service Worker
+      const blob = new Blob([swCode], { type: 'application/javascript' });
+      const swUrl = URL.createObjectURL(blob);
+      
+      navigator.serviceWorker.register(swUrl)
+        .then(reg => console.log('✅ Service Worker registered for offline support'))
+        .catch(err => console.log('❌ Service Worker registration failed:', err));
+    }
+    
+    // ===== PHẦN 4: NÚT RESET (ĐỂ TEST) =====
+    // Thêm nút reset lượt chơi
+    const resetBtn = document.createElement('button');
+    resetBtn.textContent = '🔄 Chơi lại từ đầu';
+    resetBtn.style = `
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 16px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    `;
+    resetBtn.onclick = () => {
+      localStorage.removeItem(STORAGE_KEY);
+      location.reload();
+    };
+    document.querySelector('.box').appendChild(resetBtn);
+    
   </script>
 </body>
 </html>
