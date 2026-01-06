@@ -10,19 +10,15 @@
       padding: 80px 20px;
       margin: 0;
       min-height: 100vh;
-
-      /* HÌNH NỀN - DÙNG ĐÚNG TÊN background.jpg */
+      /* HÌNH NỀN - đường dẫn tương đối */
       background-image: url("background.jpg");
       background-size: cover;
       background-position: center;
       background-repeat: no-repeat;
-
       display: flex;
       justify-content: center;
       align-items: center;
     }
-
-    /* Khung mờ */
     .box {
       background: rgba(255, 255, 255, 0.85);
       max-width: 600px;
@@ -30,7 +26,6 @@
       border-radius: 16px;
       box-shadow: 0 10px 30px rgba(0,0,0,0.25);
     }
-
     .result {
       font-weight: bold;
       line-height: 1.4;
@@ -38,8 +33,6 @@
       text-align: center;
       word-break: break-word;
     }
-    
-    /* Thông báo offline */
     #offlineAlert {
       position: fixed;
       top: 10px;
@@ -50,77 +43,79 @@
       border-radius: 8px;
       font-size: 14px;
       display: none;
+      z-index: 1000;
     }
   </style>
 </head>
-
 <body>
   <div id="offlineAlert">📴 Chế độ Offline</div>
-  
   <div class="box">
     <div class="result" id="kq"></div>
   </div>
 
   <script>
-    // ===== 1. KIỂM TRA MẠNG =====
+    // === 1. KIỂM TRA MẠNG ===
+    const offlineAlert = document.getElementById('offlineAlert');
     function updateOnlineStatus() {
-      document.getElementById('offlineAlert').style.display = 
-        navigator.onLine ? 'none' : 'block';
+      offlineAlert.style.display = navigator.onLine ? 'none' : 'block';
     }
     window.addEventListener('online', updateOnlineStatus);
     window.addEventListener('offline', updateOnlineStatus);
-    updateOnlineStatus(); // Kiểm tra ngay khi tải
+    updateOnlineStatus();
 
-    // ===== 2. GAME LOGIC =====
+    // === 2. GAME LOGIC ===
     const STORAGE_KEY = "ban_nhau_game_turns";
-
     if (!localStorage.getItem(STORAGE_KEY)) {
       const turns = [
-        "😆 CHÚC MAY MẮN LẦN SAU",
-        "😆 CHÚC MAY MẮN LẦN SAU", 
-        "😆 CHÚC MAY MẮN LẦN SAU",
-        "😆 CHÚC MAY MẮN LẦN SAU",
+        "😆 CHÚC MAY MẮN LẦN SAU", "😆 CHÚC MAY MẮN LẦN SAU", 
+        "😆 CHÚC MAY MẮN LẦN SAU", "😆 CHÚC MAY MẮN LẦN SAU",
+        "🍺 CHÚC MỪNG BẠN TRÚNG THƯỞNG 1 PHIẾU CHĂM SÓC DA CƠ BẢN TẠI KKB – UỐNG 1/2 LY",
         "🍺 CHÚC MỪNG BẠN TRÚNG THƯỞNG 1 PHIẾU CHĂM SÓC DA CƠ BẢN TẠI KKB – UỐNG 1/2 LY",
         "🍻 CHÚC MỪNG BẠN TRÚNG THƯỞNG 1 PHIẾU CHĂM SÓC DA CƠ BẢN TẠI KKB – UỐNG 1 LY",
         "🍻 CHÚC MỪNG BẠN TRÚNG THƯỞNG 1 PHIẾU CHĂM SÓC DA CƠ BẢN TẠI KKB – UỐNG 1 LY",
-        "🍻 CHÚC MỪNG BẠN TRÚNG THƯỞNG 1 PHIẾU CHĂM SÓC DA CƠ BẢN TẠI KKB – UỐNG 1 LY",
         "🍺🍺 CHÚC MỪNG BẠN TRÚNG THƯỞNG 1 PHIẾU CHĂM SÓC DA CƠ BẢN TẠI KKB – UỐNG 2 LY",
-        "🍻 CHÚC MỪNG BẠN TRÚNG THƯỞNG 1 PHIẾU CHĂM SÓC DA CƠ BẢN TẠI KKB – UỐNG 2 LY"
+        "🍺🍺 CHÚC MỪNG BẠN TRÚNG THƯỞNG 1 PHIẾU CHĂM SÓC DA CƠ BẢN TẠI KKB – UỐNG 2 LY"
       ];
       turns.sort(() => Math.random() - 0.5);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(turns));
     }
 
     const turnsLeft = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    document.getElementById("kq").innerHTML = 
-      turnsLeft.length === 0 
-        ? "⛔ BẠN ĐÃ HẾT 10 LƯỢT CHƠI" 
-        : (() => {
-            const result = turnsLeft.shift();
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(turnsLeft));
-            return result;
-          })();
+    const kqElement = document.getElementById("kq");
+    kqElement.innerHTML = turnsLeft.length === 0 
+      ? "⛔ BẠN ĐÃ HẾT 10 LƯỢT CHƠI" 
+      : (() => {
+          const result = turnsLeft.shift();
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(turnsLeft));
+          return result;
+        })();
 
-    // ===== 3. SERVICE WORKER (OFFLINE CACHE) =====
+    // === 3. SERVICE WORKER INLINE (KHÔNG CẦN FILE RIÊNG) ===
     if ('serviceWorker' in navigator) {
-      // Đăng ký Service Worker từ file riêng (sẽ tạo bên dưới)
-      navigator.serviceWorker.register('sw.js')
-        .then(reg => console.log('✅ Service Worker đã đăng ký'))
-        .catch(err => console.log('❌ Lỗi đăng ký:', err));
+      const swCode = `
+        const CACHE_NAME = 'game-cache-v1';
+        self.addEventListener('install', e => {
+          e.waitUntil(caches.open(CACHE_NAME).then(cache => 
+            cache.addAll(['./', './index.html', './background.jpg'])
+          ));
+        });
+        self.addEventListener('fetch', e => {
+          e.respondWith(caches.match(e.request).then(res => res || fetch(e.request)));
+        });
+      `;
+      const blob = new Blob([swCode], {type: 'application/javascript'});
+      navigator.serviceWorker.register(URL.createObjectURL(blob))
+        .then(() => console.log('SW registered'))
+        .catch(err => console.log('SW failed:', err));
     }
 
-    // ===== 4. NÚT RESET =====
+    // === 4. NÚT RESET ===
     const resetBtn = document.createElement('button');
     resetBtn.textContent = '🔄 Chơi lại từ đầu';
     resetBtn.style.cssText = `
-      margin-top: 20px;
-      padding: 10px 20px;
-      font-size: 16px;
-      background: #4CAF50;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
+      margin-top: 20px; padding: 10px 20px; font-size: 16px;
+      background: #4CAF50; color: white; border: none;
+      border-radius: 8px; cursor: pointer;
     `;
     resetBtn.onclick = () => {
       if (confirm("Reset lượt chơi về 10 lượt mới?")) {
