@@ -3,9 +3,6 @@
 <head>
   <meta charset="UTF-8" />
   <title>Game bàn nhậu</title>
-  <!-- Cache Manifest (hỗ trợ offline cơ bản) -->
-  <link rel="manifest" href="manifest.json">
-  
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -14,8 +11,8 @@
       margin: 0;
       min-height: 100vh;
 
-      /* HÌNH NỀN - Dùng đường dẫn tuyệt đối để đảm bảo */
-      background-image: url("https://raw.githubusercontent.com/ngocdang3010-beep/game-ban-nhau/main/b1e0e161-ed4c-4572-a5e1-1a5e6904e46a.jpg");
+      /* HÌNH NỀN - DÙNG ĐÚNG TÊN background.jpg */
+      background-image: url("background.jpg");
       background-size: cover;
       background-position: center;
       background-repeat: no-repeat;
@@ -37,7 +34,6 @@
     .result {
       font-weight: bold;
       line-height: 1.4;
-      /* Kích thước chữ lớn, phù hợp màn hình điện thoại */
       font-size: clamp(22px, 7vw, 36px);
       text-align: center;
       word-break: break-word;
@@ -59,7 +55,6 @@
 </head>
 
 <body>
-  <!-- Thông báo trạng thái mạng -->
   <div id="offlineAlert">📴 Chế độ Offline</div>
   
   <div class="box">
@@ -67,33 +62,24 @@
   </div>
 
   <script>
-    // ===== PHẦN 1: KIỂM TRA TRẠNG THÁI MẠNG =====
-    window.addEventListener('online', () => {
-      document.getElementById('offlineAlert').style.display = 'none';
-    });
-    
-    window.addEventListener('offline', () => {
-      document.getElementById('offlineAlert').style.display = 'block';
-    });
-    
-    // Kiểm tra ngay khi tải trang
-    if (!navigator.onLine) {
-      document.getElementById('offlineAlert').style.display = 'block';
+    // ===== 1. KIỂM TRA MẠNG =====
+    function updateOnlineStatus() {
+      document.getElementById('offlineAlert').style.display = 
+        navigator.onLine ? 'none' : 'block';
     }
+    window.addEventListener('online', updateOnlineStatus);
+    window.addEventListener('offline', updateOnlineStatus);
+    updateOnlineStatus(); // Kiểm tra ngay khi tải
 
-    // ===== PHẦN 2: GAME LOGIC (HOẠT ĐỘNG OFFLINE) =====
+    // ===== 2. GAME LOGIC =====
     const STORAGE_KEY = "ban_nhau_game_turns";
 
-    // Tạo 10 lượt: 6 trúng thưởng, 4 không trúng
     if (!localStorage.getItem(STORAGE_KEY)) {
       const turns = [
-        // 4 lượt không trúng thưởng
         "😆 CHÚC MAY MẮN LẦN SAU",
         "😆 CHÚC MAY MẮN LẦN SAU", 
         "😆 CHÚC MAY MẮN LẦN SAU",
         "😆 CHÚC MAY MẮN LẦN SAU",
-        
-        // 6 lượt trúng thưởng
         "🍺 CHÚC MỪNG BẠN TRÚNG THƯỞNG 1 PHIẾU CHĂM SÓC DA CƠ BẢN TẠI KKB – UỐNG 1/2 LY",
         "🍻 CHÚC MỪNG BẠN TRÚNG THƯỞNG 1 PHIẾU CHĂM SÓC DA CƠ BẢN TẠI KKB – UỐNG 1 LY",
         "🍻 CHÚC MỪNG BẠN TRÚNG THƯỞNG 1 PHIẾU CHĂM SÓC DA CƠ BẢN TẠI KKB – UỐNG 1 LY",
@@ -101,82 +87,48 @@
         "🍺🍺 CHÚC MỪNG BẠN TRÚNG THƯỞNG 1 PHIẾU CHĂM SÓC DA CƠ BẢN TẠI KKB – UỐNG 2 LY",
         "🍻 CHÚC MỪNG BẠN TRÚNG THƯỞNG 1 PHIẾU CHĂM SÓC DA CƠ BẢN TẠI KKB – UỐNG 2 LY"
       ];
-
-      // Trộn kết quả ngẫu nhiên
       turns.sort(() => Math.random() - 0.5);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(turns));
     }
 
     const turnsLeft = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    let resultText = "";
+    document.getElementById("kq").innerHTML = 
+      turnsLeft.length === 0 
+        ? "⛔ BẠN ĐÃ HẾT 10 LƯỢT CHƠI" 
+        : (() => {
+            const result = turnsLeft.shift();
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(turnsLeft));
+            return result;
+          })();
 
-    if (turnsLeft.length === 0) {
-      resultText = "⛔ BẠN ĐÃ HẾT 10 LƯỢT CHƠI";
-    } else {
-      resultText = turnsLeft.shift();
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(turnsLeft));
-    }
-
-    document.getElementById("kq").innerHTML = resultText;
-
-    // ===== PHẦN 3: SERVICE WORKER (CACHE OFFLINE) =====
+    // ===== 3. SERVICE WORKER (OFFLINE CACHE) =====
     if ('serviceWorker' in navigator) {
-      // Service Worker code được embed trực tiếp
-      const swCode = `
-        const CACHE_NAME = 'game-ban-nhau-v2';
-        const urlsToCache = [
-          '.',
-          'index.html',
-          'https://raw.githubusercontent.com/ngocdang3010-beep/game-ban-nhau/main/b1e0e161-ed4c-4572-a5e1-1a5e6904e46a.jpg'
-        ];
-
-        self.addEventListener('install', event => {
-          event.waitUntil(
-            caches.open(CACHE_NAME)
-              .then(cache => cache.addAll(urlsToCache))
-          );
-        });
-
-        self.addEventListener('fetch', event => {
-          event.respondWith(
-            caches.match(event.request)
-              .then(response => {
-                // Trả về bản cache nếu có, nếu không thì fetch từ mạng
-                return response || fetch(event.request);
-              })
-          );
-        });
-      `;
-
-      // Tạo và đăng ký Service Worker
-      const blob = new Blob([swCode], { type: 'application/javascript' });
-      const swUrl = URL.createObjectURL(blob);
-      
-      navigator.serviceWorker.register(swUrl)
-        .then(reg => console.log('✅ Service Worker registered for offline support'))
-        .catch(err => console.log('❌ Service Worker registration failed:', err));
+      // Đăng ký Service Worker từ file riêng (sẽ tạo bên dưới)
+      navigator.serviceWorker.register('sw.js')
+        .then(reg => console.log('✅ Service Worker đã đăng ký'))
+        .catch(err => console.log('❌ Lỗi đăng ký:', err));
     }
-    
-    // ===== PHẦN 4: NÚT RESET (ĐỂ TEST) =====
-    // Thêm nút reset lượt chơi
+
+    // ===== 4. NÚT RESET =====
     const resetBtn = document.createElement('button');
     resetBtn.textContent = '🔄 Chơi lại từ đầu';
-    resetBtn.style = `
+    resetBtn.style.cssText = `
       margin-top: 20px;
       padding: 10px 20px;
       font-size: 16px;
-      background-color: #4CAF50;
+      background: #4CAF50;
       color: white;
       border: none;
       border-radius: 8px;
       cursor: pointer;
     `;
     resetBtn.onclick = () => {
-      localStorage.removeItem(STORAGE_KEY);
-      location.reload();
+      if (confirm("Reset lượt chơi về 10 lượt mới?")) {
+        localStorage.removeItem(STORAGE_KEY);
+        location.reload();
+      }
     };
     document.querySelector('.box').appendChild(resetBtn);
-    
   </script>
 </body>
 </html>
